@@ -45,6 +45,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/users/**", "/clients/**").hasRole("ADMIN")
                         .requestMatchers("/form-templates/create/**").hasRole("ADMIN")
                         .requestMatchers("/form-templates").hasRole("ADMIN")
+                        // PUT e DELETE para templates → apenas admin
+                        .requestMatchers(HttpMethod.PUT, "/form-templates/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/form-templates/**").hasRole("ADMIN")
 
                         // ROTAS CLIENTE/ADMIN
                         .requestMatchers("/form-templates/me").hasAnyRole("CLIENT","ADMIN")
