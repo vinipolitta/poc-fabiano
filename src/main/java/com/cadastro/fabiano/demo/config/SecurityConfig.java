@@ -15,12 +15,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true) // permite @PreAuthorize
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -31,32 +30,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // ROTAS PUBLICAS
                         .requestMatchers("/auth/**").permitAll()
-
-                        // ROTAS ADMIN
-                        .requestMatchers(HttpMethod.PUT, "/users/**", "/clients/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/users/**", "/clients/**").hasRole("ADMIN")
-                        .requestMatchers("/form-templates/create/**").hasRole("ADMIN")
-                        .requestMatchers("/form-templates").hasRole("ADMIN")
-                        // PUT e DELETE para templates → apenas admin
-                        .requestMatchers(HttpMethod.PUT, "/form-templates/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/form-templates/**").hasRole("ADMIN")
-
-                        // ROTAS CLIENTE/ADMIN
-                        .requestMatchers("/form-templates/me").hasAnyRole("CLIENT","ADMIN")
-
-                        // ROTAS AUTENTICADAS (qualquer usuário logado)
-                        .requestMatchers("/form-templates/my-templates").authenticated()
-                        .requestMatchers("/form-submissions/**").authenticated()
-
-                        // QUALQUER OUTRA REQUISIÇÃO
+                        .requestMatchers("/form-submissions/**").permitAll() // liberado para testes
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -19,12 +19,10 @@ public class FormSubmission {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Relacionamento com template
     @ManyToOne
-    @JoinColumn(name = "template_id")
+    @JoinColumn(name = "form_template_id")
     private FormTemplate template;
 
-    // Valores preenchidos pelo cliente
     @ElementCollection
     @CollectionTable(name = "form_submission_values", joinColumns = @JoinColumn(name = "submission_id"))
     @MapKeyColumn(name = "field_label")

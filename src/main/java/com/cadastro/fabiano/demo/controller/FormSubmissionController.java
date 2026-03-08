@@ -17,17 +17,13 @@ public class FormSubmissionController {
         this.submissionService = submissionService;
     }
 
-    // ==========================
     // Cliente envia preenchimento
-    // ==========================
     @PostMapping
     public FormSubmissionResponse submitForm(@RequestBody CreateFormSubmissionRequest request) {
         return submissionService.submitForm(request);
     }
 
-    // ==========================
     // Listar envios de um template
-    // ==========================
     @GetMapping
     public List<FormSubmissionResponse> getSubmissionsByTemplate(@RequestParam Long templateId) {
         return submissionService.getSubmissionsByTemplate(templateId);

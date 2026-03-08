@@ -4,5 +4,5 @@ import java.util.Map;
 
 public record CreateFormSubmissionRequest(
         Long templateId,
-        Map<String, String> values // chave = label do campo, valor = valor preenchido
+        Map<String, String> values
 ) {}
