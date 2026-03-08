@@ -2,6 +2,7 @@ package com.cadastro.fabiano.demo.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -29,5 +30,6 @@ public class FormSubmission {
     @Column(name = "field_value")
     private Map<String, String> values;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @CreationTimestamp
+    private LocalDateTime createdAt;
 }

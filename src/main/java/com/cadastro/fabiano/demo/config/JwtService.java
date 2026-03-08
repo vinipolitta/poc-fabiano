@@ -23,26 +23,20 @@ public class JwtService {
     private long expiration;
 
     private Key getSignKey() {
-
         byte[] keyBytes = secret.getBytes();
-
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String extractUsername(String token) {
-
         return extractClaim(token, Claims::getSubject);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-
         final Claims claims = extractAllClaims(token);
-
         return claimsResolver.apply(claims);
     }
 
     private Claims extractAllClaims(String token) {
-
         return Jwts
                 .parserBuilder()
                 .setSigningKey(getSignKey())
@@ -51,7 +45,8 @@ public class JwtService {
                 .getBody();
     }
 
-    public String generateToken(UserDetails userDetails) {
+    // ⚡ Apenas adicionamos o userId como parâmetro
+    public String generateToken(UserDetails userDetails, Long userId) {
 
         String role = userDetails.getAuthorities()
                 .stream()
@@ -61,6 +56,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
+                .claim("userId", userId)      // ⚡ inclui userId
                 .claim("role", role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
@@ -69,9 +65,7 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-
         final String username = extractUsername(token);
-
         return username.equals(userDetails.getUsername());
     }
 }
