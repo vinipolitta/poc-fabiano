@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class FormTemplateService {
@@ -26,25 +25,35 @@ public class FormTemplateService {
         this.userRepository = userRepository;
     }
 
-    // Lista templates do usuário logado
+    // ==========================
+    // 🔹 LISTAR TODOS OS TEMPLATES (ADMIN)
+    // ==========================
+    public List<FormTemplateResponse> findAllTemplates() {
+        return templateRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // ==========================
+    // 🔹 LISTAR TEMPLATES DO USUÁRIO LOGADO
+    // ==========================
     public List<FormTemplateResponse> findTemplatesByUsername(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-        return templateRepository.findByClient(user).stream()
+
+        return templateRepository.findByClient(user)
+                .stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    // Lista todos os templates (ADMIN)
-    public List<FormTemplateResponse> findAllTemplates() {
-        return templateRepository.findAll().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-    }
-
-    // Cria template e associa a um cliente (ADMIN)
+    // ==========================
+    // 🔹 CRIAR TEMPLATE
+    // ==========================
     @Transactional
     public FormTemplateResponse createTemplate(CreateFormTemplateRequest request, Long clientId) {
+
         User client = userRepository.findById(clientId)
                 .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
 
@@ -52,28 +61,76 @@ public class FormTemplateService {
         template.setName(request.name());
         template.setClient(client);
 
-        // Cria campos e associa ao template
+        // 🔥 SLUG
+        template.setSlug(generateUniqueSlug(request.name()));
+
+        // 🔹 Campos do formulário
         List<FormField> fields = request.fields().stream()
                 .map(f -> {
                     FormField field = new FormField();
                     field.setLabel(f.label());
                     field.setType(f.type());
-                    field.setFormTemplate(template); // importante: evita null no form_template_id
+                    field.setFormTemplate(template);
                     return field;
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         template.setFields(fields);
 
-        FormTemplate savedTemplate = templateRepository.save(template);
-        return toResponse(savedTemplate);
+        FormTemplate saved = templateRepository.save(template);
+        return toResponse(saved);
     }
 
-    // Mapeia FormTemplate -> FormTemplateResponse
+    // ==========================
+    // 🔹 BUSCAR TEMPLATE POR SLUG
+    // ==========================
+    public FormTemplateResponse findBySlug(String slug) {
+        FormTemplate template = templateRepository.findBySlug(slug)
+                .orElseThrow(() -> new RuntimeException("Template não encontrado"));
+
+        return toResponse(template);
+    }
+
+    // ==========================
+    // 🔹 SLUG GENERATOR
+    // ==========================
+    private String generateSlug(String name) {
+        return name.toLowerCase()
+                .replaceAll("[^a-z0-9\\s]", "")
+                .replaceAll("\\s+", "-");
+    }
+
+    private String generateUniqueSlug(String name) {
+        String base = generateSlug(name);
+        String slug = base;
+        int count = 1;
+
+        while (templateRepository.existsBySlug(slug)) {
+            slug = base + "-" + count++;
+        }
+
+        return slug;
+    }
+
+    // ==========================
+    // 🔹 MAPPER PARA DTO
+    // ==========================
     private FormTemplateResponse toResponse(FormTemplate template) {
+
         List<FormFieldResponse> fields = template.getFields().stream()
-                .map(f -> new FormFieldResponse(f.getId(), f.getLabel(), f.getType()))
-                .collect(Collectors.toList());
-        return new FormTemplateResponse(template.getId(), template.getName(), fields);
+                .map(f -> new FormFieldResponse(
+                        f.getId(),
+                        f.getLabel(),
+                        f.getType()
+                ))
+                .toList();
+
+        return new FormTemplateResponse(
+                template.getId(),
+                template.getName(),
+                template.getSlug(),
+                template.getClient().getName(), // pega o nome da empresa
+                fields
+        );
     }
 }

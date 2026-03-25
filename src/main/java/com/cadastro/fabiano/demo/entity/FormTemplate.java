@@ -18,11 +18,14 @@ public class FormTemplate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name; // Nome do template
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    private String slug; // 🔥 NOVO
 
     @ManyToOne
     @JoinColumn(name = "client_id")
-    private User client; // Cliente que terá acesso ao formulário
+    private User client;
 
     @OneToMany(mappedBy = "formTemplate", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FormField> fields;

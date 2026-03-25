@@ -20,7 +20,6 @@ public class FormTemplateController {
         this.templateService = templateService;
     }
 
-    // Cria template e associa a um cliente (ADMIN)
     @PostMapping("/create/{clientId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FormTemplateResponse> createTemplate(
@@ -29,17 +28,21 @@ public class FormTemplateController {
         return ResponseEntity.ok(templateService.createTemplate(request, clientId));
     }
 
-    // Lista templates do usuário logado
     @GetMapping("/my-templates")
     public ResponseEntity<List<FormTemplateResponse>> getMyTemplates(Authentication authentication) {
         String username = authentication.getName();
         return ResponseEntity.ok(templateService.findTemplatesByUsername(username));
     }
 
-    // Lista todos os templates (ADMIN)
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<FormTemplateResponse>> getAllTemplates() {
         return ResponseEntity.ok(templateService.findAllTemplates());
+    }
+
+    // 🔥 NOVO ENDPOINT
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<FormTemplateResponse> getBySlug(@PathVariable String slug) {
+        return ResponseEntity.ok(templateService.findBySlug(slug));
     }
 }

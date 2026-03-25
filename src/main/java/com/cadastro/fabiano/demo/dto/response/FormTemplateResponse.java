@@ -5,5 +5,7 @@ import java.util.List;
 public record FormTemplateResponse(
         Long id,
         String name,
-        List<FormFieldResponse> fields
+        String slug,
+        String clientName,            // ⚡ o nome da empresa como string
+        List<FormFieldResponse> fields  // ⚡ lista de campos do formulário
 ) {}
