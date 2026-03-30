@@ -21,11 +21,12 @@ public class FormTemplate {
     private String name;
 
     @Column(nullable = false, unique = true)
-    private String slug; // 🔥 NOVO
+    private String slug;
 
+    // 🔥 CORREÇÃO AQUI
     @ManyToOne
     @JoinColumn(name = "client_id")
-    private User client;
+    private Client client;
 
     @OneToMany(mappedBy = "formTemplate", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FormField> fields;

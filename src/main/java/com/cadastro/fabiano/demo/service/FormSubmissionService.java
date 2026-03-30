@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class FormSubmissionService {
@@ -24,8 +23,12 @@ public class FormSubmissionService {
         this.templateRepository = templateRepository;
     }
 
+    // =========================
+    // CRIAR SUBMISSÃO
+    // =========================
     @Transactional
     public FormSubmissionResponse submitForm(CreateFormSubmissionRequest request) {
+
         FormTemplate template = templateRepository.findById(request.templateId())
                 .orElseThrow(() -> new RuntimeException("Template não encontrado"));
 
@@ -36,22 +39,43 @@ public class FormSubmissionService {
 
         submissionRepository.save(submission);
 
-        return new FormSubmissionResponse(
-                submission.getId(),
-                template.getId(),
-                submission.getValues(),
-                submission.getCreatedAt()
-        );
+        return toResponse(submission);
     }
 
+    // =========================
+    // LISTAR POR TEMPLATE ID
+    // =========================
     public List<FormSubmissionResponse> getSubmissionsByTemplate(Long templateId) {
-        return submissionRepository.findByTemplate_Id(templateId).stream()
-                .map(s -> new FormSubmissionResponse(
-                        s.getId(),
-                        s.getTemplate().getId(),
-                        s.getValues(),
-                        s.getCreatedAt()
-                ))
-                .collect(Collectors.toList());
+
+        return submissionRepository.findByTemplate_Id(templateId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // =========================
+    // 🔥 LISTAR POR SLUG (RECOMENDADO)
+    // =========================
+    public List<FormSubmissionResponse> getSubmissionsBySlug(String slug) {
+
+        FormTemplate template = templateRepository.findBySlug(slug)
+                .orElseThrow(() -> new RuntimeException("Template não encontrado"));
+
+        return submissionRepository.findByTemplate_Id(template.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // =========================
+    // MAPPER
+    // =========================
+    private FormSubmissionResponse toResponse(FormSubmission s) {
+        return new FormSubmissionResponse(
+                s.getId(),
+                s.getTemplate().getId(),
+                s.getValues(),
+                s.getCreatedAt()
+        );
     }
 }

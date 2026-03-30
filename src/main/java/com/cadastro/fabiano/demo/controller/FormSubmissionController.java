@@ -17,15 +17,27 @@ public class FormSubmissionController {
         this.submissionService = submissionService;
     }
 
-    // Cliente envia preenchimento
+    // =========================
+    // ENVIAR RESPOSTA (PÚBLICO)
+    // =========================
     @PostMapping
     public FormSubmissionResponse submitForm(@RequestBody CreateFormSubmissionRequest request) {
         return submissionService.submitForm(request);
     }
 
-    // Listar envios de um template
-    @GetMapping
-    public List<FormSubmissionResponse> getSubmissionsByTemplate(@RequestParam Long templateId) {
+    // =========================
+    // LISTAR POR TEMPLATE ID
+    // =========================
+    @GetMapping("/template/{templateId}")
+    public List<FormSubmissionResponse> getByTemplate(@PathVariable Long templateId) {
         return submissionService.getSubmissionsByTemplate(templateId);
+    }
+
+    // =========================
+    // 🔥 LISTAR POR SLUG (IDEAL)
+    // =========================
+    @GetMapping("/slug/{slug}")
+    public List<FormSubmissionResponse> getBySlug(@PathVariable String slug) {
+        return submissionService.getSubmissionsBySlug(slug);
     }
 }

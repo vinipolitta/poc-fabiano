@@ -20,29 +20,45 @@ public class FormTemplateController {
         this.templateService = templateService;
     }
 
+    // 🔥 ADMIN cria form para cliente
     @PostMapping("/create/{clientId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FormTemplateResponse> createTemplate(
             @PathVariable Long clientId,
             @RequestBody CreateFormTemplateRequest request) {
-        return ResponseEntity.ok(templateService.createTemplate(request, clientId));
+
+        return ResponseEntity.ok(
+                templateService.createTemplate(request, clientId)
+        );
     }
 
+    // 🔥 CLIENTE vê seus forms
     @GetMapping("/my-templates")
     public ResponseEntity<List<FormTemplateResponse>> getMyTemplates(Authentication authentication) {
+
         String username = authentication.getName();
-        return ResponseEntity.ok(templateService.findTemplatesByUsername(username));
+
+        return ResponseEntity.ok(
+                templateService.findTemplatesByUsername(username)
+        );
     }
 
+    // 🔥 ADMIN vê todos
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<FormTemplateResponse>> getAllTemplates() {
-        return ResponseEntity.ok(templateService.findAllTemplates());
+
+        return ResponseEntity.ok(
+                templateService.findAllTemplates()
+        );
     }
 
-    // 🔥 NOVO ENDPOINT
+    // 🔥 acessar por slug
     @GetMapping("/slug/{slug}")
     public ResponseEntity<FormTemplateResponse> getBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(templateService.findBySlug(slug));
+
+        return ResponseEntity.ok(
+                templateService.findBySlug(slug)
+        );
     }
 }

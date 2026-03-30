@@ -8,5 +8,7 @@ import java.util.List;
 
 @Repository
 public interface FormSubmissionRepository extends JpaRepository<FormSubmission, Long> {
+
     List<FormSubmission> findByTemplate_Id(Long templateId);
+
 }
