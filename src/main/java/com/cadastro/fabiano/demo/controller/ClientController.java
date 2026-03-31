@@ -2,9 +2,7 @@ package com.cadastro.fabiano.demo.controller;
 
 import com.cadastro.fabiano.demo.dto.request.ClientRequest;
 import com.cadastro.fabiano.demo.dto.response.ClientResponse;
-import com.cadastro.fabiano.demo.entity.Client;
 import com.cadastro.fabiano.demo.service.ClientService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
