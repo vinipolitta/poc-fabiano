@@ -1,0 +1,126 @@
+package com.cadastro.fabiano.demo.service;
+
+import com.cadastro.fabiano.demo.dto.request.ImportAttendanceRequest;
+import com.cadastro.fabiano.demo.dto.request.MarkAttendanceRequest;
+import com.cadastro.fabiano.demo.dto.response.AttendanceRecordResponse;
+import com.cadastro.fabiano.demo.entity.AttendanceRecord;
+import com.cadastro.fabiano.demo.entity.FormTemplate;
+import com.cadastro.fabiano.demo.repository.AttendanceRecordRepository;
+import com.cadastro.fabiano.demo.repository.FormTemplateRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+@Service
+public class AttendanceService {
+
+    private final AttendanceRecordRepository attendanceRepository;
+    private final FormTemplateRepository templateRepository;
+
+    public AttendanceService(AttendanceRecordRepository attendanceRepository,
+                             FormTemplateRepository templateRepository) {
+        this.attendanceRepository = attendanceRepository;
+        this.templateRepository = templateRepository;
+    }
+
+    // ============================
+    // IMPORTAR PLANILHA
+    // ============================
+    @Transactional
+    public List<AttendanceRecordResponse> importAttendance(Long templateId, ImportAttendanceRequest request) {
+        FormTemplate template = findTemplate(templateId);
+
+        // Remove lista anterior e reimporta
+        attendanceRepository.deleteByFormTemplate(template);
+
+        AtomicInteger order = new AtomicInteger(1);
+        List<AttendanceRecord> records = request.rows().stream()
+                .filter(row -> !row.isEmpty())
+                .map(row -> AttendanceRecord.builder()
+                        .formTemplate(template)
+                        .rowData(row)
+                        .attended(false)
+                        .rowOrder(order.getAndIncrement())
+                        .build()
+                )
+                .toList();
+
+        return attendanceRepository.saveAll(records)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // ============================
+    // LISTAR POR TEMPLATE
+    // ============================
+    public List<AttendanceRecordResponse> getByTemplate(Long templateId) {
+        FormTemplate template = findTemplate(templateId);
+        return attendanceRepository.findByFormTemplateOrderByRowOrderAscCreatedAtAsc(template)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // ============================
+    // MARCAR / DESMARCAR PRESENÇA
+    // ============================
+    @Transactional
+    public AttendanceRecordResponse markAttendance(Long recordId, MarkAttendanceRequest request) {
+        AttendanceRecord record = attendanceRepository.findById(recordId)
+                .orElseThrow(() -> new RuntimeException("Registro não encontrado"));
+
+        record.setAttended(request.attended());
+        record.setNotes(request.notes());
+        record.setAttendedAt(request.attended() ? LocalDateTime.now() : null);
+
+        return toResponse(attendanceRepository.save(record));
+    }
+
+    // ============================
+    // ATUALIZAR DADOS DE UMA LINHA
+    // ============================
+    @Transactional
+    public AttendanceRecordResponse updateRowData(Long recordId, Map<String, String> rowData) {
+        AttendanceRecord record = attendanceRepository.findById(recordId)
+                .orElseThrow(() -> new RuntimeException("Registro não encontrado"));
+
+        record.setRowData(rowData);
+        return toResponse(attendanceRepository.save(record));
+    }
+
+    // ============================
+    // DELETAR REGISTRO
+    // ============================
+    @Transactional
+    public void deleteRecord(Long recordId) {
+        attendanceRepository.findById(recordId)
+                .orElseThrow(() -> new RuntimeException("Registro não encontrado"));
+        attendanceRepository.deleteById(recordId);
+    }
+
+    // ============================
+    // HELPERS
+    // ============================
+    private FormTemplate findTemplate(Long templateId) {
+        return templateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("Template não encontrado"));
+    }
+
+    private AttendanceRecordResponse toResponse(AttendanceRecord r) {
+        return new AttendanceRecordResponse(
+                r.getId(),
+                r.getFormTemplate().getId(),
+                r.getRowData(),
+                r.isAttended(),
+                r.getAttendedAt(),
+                r.getNotes(),
+                r.getRowOrder(),
+                r.getCreatedAt()
+        );
+    }
+}
