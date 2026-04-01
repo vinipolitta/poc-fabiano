@@ -46,6 +46,9 @@ jobs:
             sleep 2
           done
 
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
       - name: Build and run tests
         run: ./mvnw verify --no-transfer-progress
         env:
