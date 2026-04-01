@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/form-submissions/**").permitAll()
                         .requestMatchers("/forms/**").permitAll()
