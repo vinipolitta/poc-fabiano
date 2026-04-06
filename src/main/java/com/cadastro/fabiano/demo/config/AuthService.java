@@ -6,11 +6,8 @@ import com.cadastro.fabiano.demo.dto.response.AuthResponse;
 import com.cadastro.fabiano.demo.entity.Role;
 import com.cadastro.fabiano.demo.entity.User;
 import com.cadastro.fabiano.demo.repository.UserRepository;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class AuthService {
