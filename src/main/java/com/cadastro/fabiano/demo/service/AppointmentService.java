@@ -6,6 +6,8 @@ import com.cadastro.fabiano.demo.dto.response.AvailableSlotsResponse;
 import com.cadastro.fabiano.demo.entity.Appointment;
 import com.cadastro.fabiano.demo.entity.AppointmentStatus;
 import com.cadastro.fabiano.demo.entity.FormTemplate;
+import com.cadastro.fabiano.demo.exception.DuplicateBookingException;
+import com.cadastro.fabiano.demo.exception.SlotFullException;
 import com.cadastro.fabiano.demo.repository.AppointmentRepository;
 import com.cadastro.fabiano.demo.repository.FormTemplateRepository;
 import org.springframework.data.domain.Page;
@@ -38,24 +40,26 @@ public class AppointmentService {
     // ==========================
     public AvailableSlotsResponse getAvailableSlots(Long templateId, LocalDate date) {
         FormTemplate template = findTemplateWithSchedule(templateId);
+        int capacity = Math.max(1, template.getSlotCapacity());
 
-        // Gera todos os slots do dia baseado na configuração
         List<LocalTime> allSlots = generateSlots(
                 template.getScheduleStartTime(),
                 template.getScheduleEndTime(),
                 template.getSlotDurationMinutes()
         );
 
-        // Busca slots já ocupados (status AGENDADO)
-        Set<LocalTime> bookedTimes = appointmentRepository
+        // Agrupa contagem de agendados ativos por slot
+        Map<LocalTime, Long> bookedCountBySlot = appointmentRepository
                 .findByFormTemplateAndSlotDate(template, date)
                 .stream()
                 .filter(a -> a.getStatus() == AppointmentStatus.AGENDADO)
-                .map(Appointment::getSlotTime)
-                .collect(Collectors.toSet());
+                .collect(Collectors.groupingBy(Appointment::getSlotTime, Collectors.counting()));
 
         List<AvailableSlotsResponse.SlotInfo> slots = allSlots.stream()
-                .map(t -> new AvailableSlotsResponse.SlotInfo(t, !bookedTimes.contains(t)))
+                .map(t -> {
+                    int booked = bookedCountBySlot.getOrDefault(t, 0L).intValue();
+                    return new AvailableSlotsResponse.SlotInfo(t, booked < capacity, booked, capacity);
+                })
                 .toList();
 
         return new AvailableSlotsResponse(date, slots);
@@ -66,19 +70,42 @@ public class AppointmentService {
     // ==========================
     @Transactional
     public AppointmentResponse book(BookAppointmentRequest request) {
-        FormTemplate template = findTemplateWithSchedule(request.templateId());
+        // Lock pessimista no template para serializar bookings concorrentes no mesmo evento
+        FormTemplate template = formTemplateRepository.findByIdWithLock(request.templateId())
+                .orElseThrow(() -> new RuntimeException("Template não encontrado"));
+
+        if (!template.isHasSchedule()) {
+            throw new RuntimeException("Este formulário não possui configuração de agenda");
+        }
 
         validateSlotDate(template, request.slotDate());
         validateSlotTime(template, request.slotTime());
 
-        // Verifica se já existe agendamento ativo para esse slot
-        List<Appointment> existing = appointmentRepository
-                .findByFormTemplateAndSlotDateAndSlotTimeAndStatus(
-                        template, request.slotDate(), request.slotTime(), AppointmentStatus.AGENDADO
-                );
+        Map<String, String> extraValues = request.extraValues() != null ? request.extraValues() : Map.of();
 
-        if (!existing.isEmpty()) {
-            throw new RuntimeException("Este horário já está reservado. Escolha outro.");
+        // Regra: deduplicação por campos configurados no template
+        Set<String> dedupFields = template.getDedupFields();
+        String dedupKey = null;
+        if (dedupFields != null && !dedupFields.isEmpty()) {
+            dedupKey = buildDedupKey(dedupFields, extraValues);
+            boolean alreadyBooked = appointmentRepository.existsByFormTemplateAndSlotDateAndDedupKeyAndStatus(
+                    template, request.slotDate(), dedupKey, AppointmentStatus.AGENDADO);
+            if (alreadyBooked) {
+                String fieldNames = dedupFields.stream().sorted().collect(Collectors.joining(" + "));
+                throw new DuplicateBookingException(
+                        "Usuário já cadastrado na lista. " +
+                        "Identificação por: " + fieldNames + ".");
+            }
+        }
+
+        // Regra: verifica capacidade máxima do slot
+        long bookedCount = appointmentRepository.countByFormTemplateAndSlotDateAndSlotTimeAndStatus(
+                template, request.slotDate(), request.slotTime(), AppointmentStatus.AGENDADO);
+
+        int effectiveCapacity = Math.max(1, template.getSlotCapacity());
+        if (bookedCount >= effectiveCapacity) {
+            throw new SlotFullException(
+                    "Este horário está lotado (" + effectiveCapacity + " vaga(s) preenchida(s)). Escolha outro horário.");
         }
 
         Appointment appointment = Appointment.builder()
@@ -88,7 +115,8 @@ public class AppointmentService {
                 .status(AppointmentStatus.AGENDADO)
                 .bookedByName(request.bookedByName())
                 .bookedByContact(request.bookedByContact())
-                .extraValues(request.extraValues() != null ? request.extraValues() : Map.of())
+                .dedupKey(dedupKey)
+                .extraValues(extraValues)
                 .build();
 
         return toResponse(appointmentRepository.save(appointment));
@@ -194,6 +222,25 @@ public class AppointmentService {
         if (!validSlots.contains(time)) {
             throw new RuntimeException("Horário inválido para este formulário");
         }
+    }
+
+    /**
+     * Monta a chave de deduplicação a partir dos campos configurados.
+     * Campos são ordenados alfabeticamente para garantir consistência independente
+     * da ordem em que o criador do template os selecionou.
+     * Valores são normalizados (trim + lowercase) para evitar falsos negativos.
+     *
+     * Exemplo: campos={"CPF","Nome"}, extraValues={"Nome":"João Silva","CPF":"123.456.789-00"}
+     * → "cpf=123.456.789-00|nome=joão silva"
+     */
+    private String buildDedupKey(Set<String> fields, Map<String, String> extraValues) {
+        return fields.stream()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .map(field -> {
+                    String value = extraValues.getOrDefault(field, "").trim().toLowerCase();
+                    return field.toLowerCase() + "=" + value;
+                })
+                .collect(Collectors.joining("|"));
     }
 
     private AppointmentResponse toResponse(Appointment a) {

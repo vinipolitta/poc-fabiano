@@ -58,6 +58,14 @@ public class Appointment {
     @Builder.Default
     private Map<String, String> extraValues = new HashMap<>();
 
+    /**
+     * Chave de deduplicação calculada no momento do booking.
+     * Formato: "campo1=valor1|campo2=valor2" (campos ordenados alfabeticamente).
+     * Null quando o template não possui dedupFields configurados.
+     */
+    @Column(name = "dedup_key", length = 1000)
+    private String dedupKey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

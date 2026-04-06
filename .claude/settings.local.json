@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:\\\\Users\\\\Vini\\\\.claude\\\\projects\\\\D--Projetos-back-poc-fabiano\\\\memory\"\" 2>/dev/null || echo \"vazio \")"
+    ]
+  }
+}
