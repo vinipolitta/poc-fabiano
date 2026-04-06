@@ -10,6 +10,8 @@ public record AvailableSlotsResponse(
 ) {
     public record SlotInfo(
             LocalTime time,
-            boolean available
+            boolean available,
+            int bookedCount,
+            int capacity
     ) {}
 }

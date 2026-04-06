@@ -91,6 +91,10 @@ public class FormTemplateService {
             template.setScheduleEndTime(sc.endTime());
             template.setSlotDurationMinutes(sc.slotDurationMinutes());
             template.setMaxDaysAhead(sc.maxDaysAhead());
+            template.setSlotCapacity(sc.slotCapacity() > 0 ? sc.slotCapacity() : 1);
+            template.setDedupFields(sc.dedupFields() != null
+                    ? new java.util.HashSet<>(sc.dedupFields())
+                    : new java.util.HashSet<>());
         }
 
         // Aparência / customização (opcional)
@@ -115,6 +119,27 @@ public class FormTemplateService {
 
         FormTemplate saved = templateRepository.save(template);
         return toResponse(saved);
+    }
+
+    // ==========================
+    // ATUALIZAR SCHEDULE CONFIG
+    // ==========================
+    @Transactional
+    public FormTemplateResponse updateScheduleConfig(Long templateId, ScheduleConfigRequest request) {
+        FormTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("Template não encontrado"));
+
+        template.setHasSchedule(true);
+        template.setScheduleStartTime(request.startTime());
+        template.setScheduleEndTime(request.endTime());
+        template.setSlotDurationMinutes(request.slotDurationMinutes());
+        template.setMaxDaysAhead(request.maxDaysAhead());
+        template.setSlotCapacity(request.slotCapacity() > 0 ? request.slotCapacity() : 1);
+        template.setDedupFields(request.dedupFields() != null
+                ? new java.util.HashSet<>(request.dedupFields())
+                : new java.util.HashSet<>());
+
+        return toResponse(templateRepository.save(template));
     }
 
     // ==========================
@@ -216,7 +241,11 @@ public class FormTemplateService {
                     template.getScheduleStartTime(),
                     template.getScheduleEndTime(),
                     template.getSlotDurationMinutes(),
-                    template.getMaxDaysAhead()
+                    template.getMaxDaysAhead(),
+                    template.getSlotCapacity(),
+                    template.getDedupFields() != null
+                            ? template.getDedupFields().stream().sorted().toList()
+                            : List.of()
             );
         }
 

@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "form_templates")
@@ -54,6 +56,26 @@ public class FormTemplate {
 
     @Column(name = "max_days_ahead")
     private Integer maxDaysAhead;
+
+    /** Capacidade máxima de pessoas por slot de horário */
+    @Column(name = "slot_capacity", nullable = false, columnDefinition = "integer default 1")
+    @Builder.Default
+    private int slotCapacity = 1;
+
+    /**
+     * Campos do formulário usados como chave de deduplicação.
+     * Se vazio → múltiplos agendamentos permitidos (sem restrição).
+     * Se preenchido → a combinação dos valores desses campos deve ser única por template.
+     * Exemplo: {"CPF"} ou {"Nome", "CPF"}
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+        name = "form_template_dedup_fields",
+        joinColumns = @JoinColumn(name = "template_id")
+    )
+    @Column(name = "field_label")
+    @Builder.Default
+    private Set<String> dedupFields = new HashSet<>();
 
     // =====================
     // APARÊNCIA / CUSTOMIZAÇÃO
