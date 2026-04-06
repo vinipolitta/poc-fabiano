@@ -19,6 +19,17 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByFormTemplateAndSlotDateAndSlotTimeAndStatus(
             FormTemplate formTemplate, LocalDate date, LocalTime time, AppointmentStatus status);
 
+    /** Contagem de agendados num slot — usada para verificar capacidade */
+    long countByFormTemplateAndSlotDateAndSlotTimeAndStatus(
+            FormTemplate formTemplate, LocalDate date, LocalTime time, AppointmentStatus status);
+
+    /**
+     * Verifica duplicidade dentro do mesmo dia.
+     * Mesma pessoa (dedupKey) só pode ter 1 agendamento ativo por data no template.
+     */
+    boolean existsByFormTemplateAndSlotDateAndDedupKeyAndStatus(
+            FormTemplate formTemplate, LocalDate slotDate, String dedupKey, AppointmentStatus status);
+
     // Para o DashboardService (stats, sem paginação)
     List<Appointment> findByFormTemplate(FormTemplate formTemplate);
 

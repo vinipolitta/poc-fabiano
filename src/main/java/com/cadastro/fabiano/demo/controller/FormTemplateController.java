@@ -1,6 +1,7 @@
 package com.cadastro.fabiano.demo.controller;
 
 import com.cadastro.fabiano.demo.dto.request.CreateFormTemplateRequest;
+import com.cadastro.fabiano.demo.dto.request.ScheduleConfigRequest;
 import com.cadastro.fabiano.demo.dto.response.FormTemplateResponse;
 import com.cadastro.fabiano.demo.service.FormTemplateService;
 import org.springframework.data.domain.Page;
@@ -56,5 +57,14 @@ public class FormTemplateController {
         return ResponseEntity.ok(
                 templateService.findBySlug(slug)
         );
+    }
+
+    @PatchMapping("/{id}/schedule-config")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FUNCIONARIO')")
+    public ResponseEntity<FormTemplateResponse> updateScheduleConfig(
+            @PathVariable Long id,
+            @RequestBody ScheduleConfigRequest request) {
+
+        return ResponseEntity.ok(templateService.updateScheduleConfig(id, request));
     }
 }
