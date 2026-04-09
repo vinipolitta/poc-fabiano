@@ -23,6 +23,22 @@ public class ImageStorageService {
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
 
+    /**
+     * Remove um arquivo de imagem do disco, dado sua URL pública.
+     * Não lança exceção — falhas são silenciosas para não interferir na transação principal.
+     */
+    public void delete(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) return;
+        try {
+            // "http://host:port/files/abc123.jpg" → "abc123.jpg"
+            String filename = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Files.deleteIfExists(uploadPath.resolve(filename));
+        } catch (Exception ignored) {
+            // Arquivo já removido ou caminho inválido — sem impacto no fluxo
+        }
+    }
+
     public String store(MultipartFile file) throws Exception {
 
         validate(file);

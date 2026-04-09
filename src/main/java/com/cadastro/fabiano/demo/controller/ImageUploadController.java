@@ -29,4 +29,13 @@ public class ImageUploadController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
+
+    @DeleteMapping("/image")
+    public ResponseEntity<Void> deleteImage(@RequestBody java.util.Map<String, String> body) {
+        String url = body.get("url");
+        if (url != null && !url.isBlank()) {
+            service.delete(url);
+        }
+        return ResponseEntity.noContent().build();
+    }
 }

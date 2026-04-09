@@ -4,6 +4,7 @@ import java.util.List;
 
 public record UpdateFormTemplateRequest(
         String name,
-        List<UpdateFormFieldRequest> fields
+        List<UpdateFormFieldRequest> fields,
+        TemplateAppearanceRequest appearance
 ) {
 }

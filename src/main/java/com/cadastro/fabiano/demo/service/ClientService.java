@@ -4,6 +4,7 @@ package com.cadastro.fabiano.demo.service;
 import com.cadastro.fabiano.demo.dto.request.ClientRequest;
 import com.cadastro.fabiano.demo.dto.response.ClientResponse;
 import com.cadastro.fabiano.demo.entity.Client;
+import com.cadastro.fabiano.demo.entity.FormTemplate;
 import com.cadastro.fabiano.demo.mapper.ClientMapper;
 import com.cadastro.fabiano.demo.repository.ClientRepository;
 import jakarta.transaction.Transactional;
@@ -13,12 +14,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class ClientService {
 
     private final ClientRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final FormTemplateService formTemplateService;
 
 
     @Transactional
@@ -53,9 +57,13 @@ public class ClientService {
         Client client = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Client not found"));
 
-        // Cascade: soft-delete todos os templates vinculados
-        if (client.getTemplates() != null) {
-            client.getTemplates().forEach(t -> t.setDeleted(true));
+        List<FormTemplate> templates = client.getTemplates();
+
+        // Remove imagens de cada template ANTES do soft-delete
+        // (countUsingImageUrlExcluding usa o ID, então não precisa que o registro esteja deletado)
+        if (templates != null) {
+            templates.forEach(formTemplateService::deleteTemplateImages);
+            templates.forEach(t -> t.setDeleted(true));
         }
 
         client.setDeleted(true);

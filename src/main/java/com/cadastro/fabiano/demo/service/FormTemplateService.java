@@ -28,13 +28,16 @@ public class FormTemplateService {
     private final FormTemplateRepository templateRepository;
     private final UserRepository userRepository;
     private final ClientRepository clientRepository;
+    private final ImageStorageService imageStorageService;
 
     public FormTemplateService(FormTemplateRepository templateRepository,
                                UserRepository userRepository,
-                               ClientRepository clientRepository) {
+                               ClientRepository clientRepository,
+                               ImageStorageService imageStorageService) {
         this.templateRepository = templateRepository;
         this.userRepository = userRepository;
         this.clientRepository = clientRepository;
+        this.imageStorageService = imageStorageService;
     }
 
     // ==========================
@@ -151,7 +154,25 @@ public class FormTemplateService {
             template.getFields().addAll(newFields);
         }
 
-        return toResponse(templateRepository.save(template));
+        // Captura URLs antigas antes de sobrescrever
+        String oldHeader     = template.getHeaderImageUrl();
+        String oldFooter     = template.getFooterImageUrl();
+        String oldBackground = template.getBackgroundImageUrl();
+
+        if (request.appearance() != null) {
+            applyAppearance(template, request.appearance());
+        }
+
+        FormTemplate saved = templateRepository.save(template);
+
+        // Remove arquivos órfãos do disco (após o save, a contagem já não inclui este template)
+        if (request.appearance() != null) {
+            tryDeleteOrphanedImage(oldHeader,     request.appearance().headerImageUrl());
+            tryDeleteOrphanedImage(oldFooter,     request.appearance().footerImageUrl());
+            tryDeleteOrphanedImage(oldBackground, request.appearance().backgroundImageUrl());
+        }
+
+        return toResponse(saved);
     }
 
     // ==========================
@@ -182,8 +203,21 @@ public class FormTemplateService {
     public void deleteTemplate(Long templateId) {
         FormTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new RuntimeException("Template não encontrado"));
+
+        // Captura IDs e URLs antes do soft-delete
+        Long id          = template.getId();
+        String headerUrl     = template.getHeaderImageUrl();
+        String footerUrl     = template.getFooterImageUrl();
+        String backgroundUrl = template.getBackgroundImageUrl();
+
         template.setDeleted(true);
         templateRepository.save(template);
+
+        // Usa exclusão explícita pelo ID para não depender do flush do @SQLRestriction
+        // na mesma transação — garante que o arquivo é removido mesmo sem auto-flush
+        tryDeleteOrphanedImageExcluding(headerUrl,     id);
+        tryDeleteOrphanedImageExcluding(footerUrl,     id);
+        tryDeleteOrphanedImageExcluding(backgroundUrl, id);
     }
 
     // ==========================
@@ -218,6 +252,44 @@ public class FormTemplateService {
     }
 
     // ==========================
+    // LIMPEZA DE IMAGENS ÓRFÃS
+    // ==========================
+
+    /**
+     * Deleta o arquivo físico da {@code oldUrl} se ela foi trocada/removida
+     * e nenhum outro template ativo ainda a referencia.
+     * Seguro contra URLs nulas e falhas de I/O.
+     */
+    private void tryDeleteOrphanedImage(String oldUrl, String newUrl) {
+        if (oldUrl == null || oldUrl.isBlank()) return;      // nada a remover
+        if (oldUrl.equals(newUrl)) return;                   // URL não mudou
+        if (templateRepository.countUsingImageUrl(oldUrl) == 0) {
+            imageStorageService.delete(oldUrl);
+        }
+    }
+
+    /**
+     * Variante usada no soft-delete: exclui o template pelo ID da contagem
+     * para não depender do @SQLRestriction no mesmo flush de transação.
+     */
+    private void tryDeleteOrphanedImageExcluding(String url, Long excludeId) {
+        if (url == null || url.isBlank()) return;
+        if (templateRepository.countUsingImageUrlExcluding(url, excludeId) == 0) {
+            imageStorageService.delete(url);
+        }
+    }
+
+    /**
+     * Remove as imagens físicas de um template sem fazer soft-delete.
+     * Usado pela exclusão em cascata de clientes.
+     */
+    public void deleteTemplateImages(FormTemplate template) {
+        tryDeleteOrphanedImageExcluding(template.getHeaderImageUrl(),     template.getId());
+        tryDeleteOrphanedImageExcluding(template.getFooterImageUrl(),     template.getId());
+        tryDeleteOrphanedImageExcluding(template.getBackgroundImageUrl(), template.getId());
+    }
+
+    // ==========================
     // APARÊNCIA
     // ==========================
     private void applyAppearance(FormTemplate template, TemplateAppearanceRequest a) {
@@ -232,6 +304,10 @@ public class FormTemplateService {
         template.setFieldTextColor(a.fieldTextColor());
         template.setCardBackgroundColor(a.cardBackgroundColor());
         template.setCardBorderColor(a.cardBorderColor());
+        template.setFontFamily(a.fontFamily());
+        template.setTitleFontSize(a.titleFontSize());
+        template.setLabelFontSize(a.labelFontSize());
+        template.setButtonFontSize(a.buttonFontSize());
     }
 
     private TemplateAppearanceResponse buildAppearanceResponse(FormTemplate t) {
@@ -245,7 +321,11 @@ public class FormTemplateService {
                 && t.getFieldBackgroundColor() == null
                 && t.getFieldTextColor() == null
                 && t.getCardBackgroundColor() == null
-                && t.getCardBorderColor() == null) {
+                && t.getCardBorderColor() == null
+                && t.getFontFamily() == null
+                && t.getTitleFontSize() == null
+                && t.getLabelFontSize() == null
+                && t.getButtonFontSize() == null) {
             return null;
         }
         return new TemplateAppearanceResponse(
@@ -259,7 +339,11 @@ public class FormTemplateService {
                 t.getFieldBackgroundColor(),
                 t.getFieldTextColor(),
                 t.getCardBackgroundColor(),
-                t.getCardBorderColor()
+                t.getCardBorderColor(),
+                t.getFontFamily(),
+                t.getTitleFontSize(),
+                t.getLabelFontSize(),
+                t.getButtonFontSize()
         );
     }
 
